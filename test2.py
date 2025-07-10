@@ -1,7 +1,19 @@
-from openpyxl import load_workbook
+from openpyxl import load_workbook, Workbook
+from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 from datetime import datetime
 import calendar
 import re
+from collections import defaultdict
+
+# 欄位寬度與格式設定
+col_widths = [16, 22, 22, 25, 12, 12, 12, 12, 12, 12, 14]
+header_fill = PatternFill(start_color="FDE8D7", end_color="FDE8D7", fill_type="solid")
+bold_font = Font(bold=True)
+calibri_bold = Font(name='Calibri', bold=True)
+thin = Side(border_style="thin", color="000000")
+red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+border = Border(top=thin, left=thin, right=thin, bottom=thin)
 
 def gen_next_6months_titles():
     months = []
@@ -12,10 +24,10 @@ def gen_next_6months_titles():
         if m > 12:
             y += (m - 1) // 12
             m = (m - 1) % 12 + 1
-        if i == 0 and now.month == 6 and now.year == 2025:  # 若起始為 Jun 2025
+        if i == 0 and now.month == 6 and now.year == 2025:
             months.append("Jun'25")
         else:
-            # 這裡預設 Jul, Aug ... 若你有特殊命名再加條件
+            # 根據資料表格實際格式決定月份命名
             if y == 2025 and m == 6:
                 months.append("Jun'25")
             elif y == 2025 and m == 7:
@@ -56,11 +68,6 @@ def find_multilevel_header(ws, main_titles, month_titles, search_limit=30):
     raise ValueError("找不到雙列標題")
 
 def merge_multilevel_header(header1, header2):
-    """
-    主標題遇到空白會自動向左補值，產生最終欄位名稱
-    - header1: 主標題（list）
-    - header2: 副標題（list）
-    """
     header1_filled = header1.copy()
     last_main = ""
     for i in range(len(header1_filled)):
@@ -99,7 +106,6 @@ def make_headers_unique(headers):
     return result
 
 def extract_group_month_fields(headers):
-    # 輸出 dict: {主題: [(月份, 欄位名)]}
     group_fields = {}
     pattern = r"^(.+)_((?:Jan|Feb|Mar|Apr|May|Jun'25|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:'\d\d|\-\d\d\d\d)?)(?:_(\d+))?$"
     for h in headers:
@@ -119,13 +125,10 @@ def next_n_month_names(n, header_months):
     cnt = 0
     all_header_months = set(header_months)
     while cnt < n:
-        # 以欄位實際出現的名稱為準，自動對應年份與特殊寫法
-        # 嘗試 "Jul"、"Jul'25"、"2026-Jan" 這種格式
         this_year = y
-        m_str_std = datetime(this_year, m, 1).strftime("%b")      # "Jul"
+        m_str_std = datetime(this_year, m, 1).strftime("%b")
         m_str_jun25 = "Jun'25" if m == 6 and "Jun'25" in all_header_months else None
         m_str_year = f"{this_year}-{m_str_std}" if f"{this_year}-{m_str_std}" in all_header_months else None
-        # 優先順序: Jun'25 > yyyy-Mmm > Mmm
         if m_str_jun25:
             m_str = m_str_jun25
         elif m_str_year:
@@ -140,18 +143,118 @@ def next_n_month_names(n, header_months):
         cnt += 1
     return months
 
+def draw_table(ws, start_row):
+    try:
+        # 設定欄寬
+        for i, width in enumerate(col_widths, 1):
+            ws.column_dimensions[get_column_letter(i)].width = width
+
+        # 合併儲存格
+        ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row+1, end_column=1)
+        ws.merge_cells(start_row=start_row, start_column=2, end_row=start_row+1, end_column=2)
+        ws.merge_cells(start_row=start_row, start_column=3, end_row=start_row+1, end_column=3)
+        ws.merge_cells(start_row=start_row, start_column=4, end_row=start_row+1, end_column=4)
+        ws.merge_cells(start_row=start_row, start_column=5, end_row=start_row, end_column=10)
+        ws.merge_cells(start_row=start_row, start_column=11, end_row=start_row+1, end_column=11)
+        ws.merge_cells(start_row=start_row+2, start_column=1, end_row=start_row+4, end_column=1)
+        ws.merge_cells(start_row=start_row+2, start_column=2, end_row=start_row+4, end_column=2)
+        ws.merge_cells(start_row=start_row+2, start_column=3, end_row=start_row+4, end_column=3)
+        ws.merge_cells(start_row=start_row+2, start_column=11, end_row=start_row+4, end_column=11)
+
+        # 標題內容與格式
+        ws.cell(row=start_row, column=1, value="Process")
+        ws.cell(row=start_row, column=2, value="Tester")
+        ws.cell(row=start_row, column=3, value="Customer")
+        ws.cell(row=start_row, column=4, value="Month")
+        ws.cell(row=start_row, column=5, value="6M FCST ( pcs/wk )")
+        ws.cell(row=start_row, column=11, value="Summary")
+
+        for col in range(1, 12):
+            cell = ws.cell(row=start_row, column=col)
+            cell.fill = header_fill
+            cell.font = calibri_bold
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = border
+
+        for col in range(5, 11):
+            cell = ws.cell(row=start_row+1, column=col)
+            cell.fill = header_fill
+            cell.font = calibri_bold
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = border
+
+        for col in range(1, 12):
+            cell = ws.cell(row=start_row+1, column=col)
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = border
+
+        # 直排內容與格式
+        ws.cell(row=start_row+2, column=4, value="MachineO/H")
+        ws.cell(row=start_row+3, column=4, value="Machine require(set/Wk)")
+        ws.cell(row=start_row+4, column=4, value="idling tester")
+        for row in range(start_row+2, start_row+5):
+            cell = ws.cell(row=row, column=4)
+            cell.fill = header_fill
+            cell.font = calibri_bold
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+            cell.border = border
+
+        # 補其餘區塊邊框
+        for r in range(start_row, start_row+5):
+            for c in range(1, 12):
+                ws.cell(row=r, column=c).border = border
+
+    except Exception as e:
+        print(f"draw_table 發生不可預期錯誤，起始列 {start_row}，錯誤訊息：{e}")
+
+def write_table_block(ws, start_row, data, months, process, tester, customer):
+    for i, row_offset in enumerate([2, 3, 4]):
+        r = start_row + row_offset
+        # 左側 Process, Tester, Customer 只寫第一列
+        if row_offset == 2:
+            for col, val in zip([1, 2, 3], [process, tester, customer]):
+                cell = ws.cell(row=r, column=col, value=val)
+                cell.font = calibri_bold
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+        # 六個月橫向資料
+        for j, m in enumerate(months):
+            # 最上方那一行填 Month（row=r-1，只在 Machine O/H 那一列填一次）
+            if i == 0:
+                cell_month = ws.cell(row=r-1, column=5+j, value=m)
+                cell_month.font = calibri_bold
+                cell_month.alignment = Alignment(horizontal="center", vertical="center")
+            # 實際數據格填資料
+            if i == 0:
+                value = data['Machine O/H'][j]
+            elif i == 1:
+                value = data['Machine require(set/Wk)'][j]
+            elif i == 2:
+                value = data['idling tester'][j]
+            cell = ws.cell(row=r, column=5+j, value=value)
+            cell.font = calibri_bold
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            # idling tester 負值時塗紅底
+            if i == 2 and value is not None:
+                try:
+                    if float(value) < 0:
+                        cell.fill = red_fill
+                except Exception:
+                    pass
+
+def process_sheet(wb, ws_name, output_ws, start_row):
+    ws = wb[ws_name]
+
 if __name__ == "__main__":
     # 1. 載入檔案
     source = "250702162359805.xlsm"
     wb = load_workbook(source, keep_vba=True)
-    ws = wb["CP Summary"]  # 你要抓 FT Summary 也只要 ws = wb["FT Summary"]
+    ws = wb["CP Summary"]
 
     # 你的設定
     main_titles = ['Machine O/H (set)', 'Machine require(set/Wk)', 'Idling tester (set)']
     months = gen_next_6months_titles()
     
     header_row1, header_row2 = find_multilevel_header(ws, main_titles + ["Process", "Tester", "Customer"], months)
-
     header1 = [str(cell.value).strip() if cell.value else "" for cell in ws[header_row1]]
     header2 = [str(cell.value).strip() if cell.value else "" for cell in ws[header_row2]]
 
@@ -161,32 +264,17 @@ if __name__ == "__main__":
 
     # 取得所有主題_月份型態的欄位
     group_month_fields = extract_group_month_fields(unique_headers)
-    # 取得所有月份名
     all_months = sorted({month for fields in group_month_fields.values() for (month, _) in fields})
-
-    # print(group_month_fields.keys())
 
     # 取得當月起六個月的月份名（以所有 header 出現過的月份為依據）
     target_months = next_n_month_names(6, all_months)
     print("自動判斷本月起六個月：", target_months)
 
-    # 為每個主題挑出連續六個月的欄位名
-    target_fields_by_group = {}
-    for group, fields in group_month_fields.items():
-        # 這個主題下所有 (月份, 欄位名)
-        month_to_field = {month: h for (month, h) in fields}
-        # 依序取對應的欄位名（找不到用None填）
-        target_fields = [month_to_field.get(month) for month in target_months]
-        target_fields_by_group[group] = target_fields
-
-    print("\n主題及自動對應六個月的欄位名：")
-    for group, fields in target_fields_by_group.items():
-        print(f"{group}: {fields}")
-
     fill_columns = ["Process", "Tester", "Customer"]
     last_values = {col: None for col in fill_columns}
+    skip_process = {"T1 CP Subtotal", "Utilization"}
 
-    # 讀取資料列
+    # 讀取資料列並補齊合併欄
     data_rows = []
     for row in ws.iter_rows(min_row=header_row2+1, values_only=True):
         if all(cell is None or cell == "" for cell in row):
@@ -198,40 +286,46 @@ if __name__ == "__main__":
             row_data = row_data[:len(unique_headers)]
         row_dict = dict(zip(unique_headers, row_data))
         for col in fill_columns:
-            if not row_dict.get(col):  # 若是 None 或 ""
+            if not row_dict.get(col):
                 row_dict[col] = last_values[col]
             else:
                 last_values[col] = row_dict[col]
+        if row_dict.get('Process') in skip_process:
+            continue  # 跳過這一行
+        
+        is_negative = False
+        for m in target_months:
+            val = row_dict.get(f"Idling tester (set)_{m}")
+            try:
+                if val is not None and float(val) < 0:
+                    is_negative = True
+                    break
+            except Exception:
+                continue
+        if not is_negative:
+            continue
         data_rows.append(row_dict)
 
-    # 輸出每一列各主題下六個月的資料
-    print("\n範例：前2筆資料（每個主題六個月）")
-    for row in data_rows[:2]:
-        print(f"Process: {row.get('Process', '')}, Tester: {row.get('Tester', '')}, Customer: {row.get('Customer', '')}")
-        for group, fields in target_fields_by_group.items():
-            values = [row.get(f) if f else None for f in fields]
-            print(f"{group}: {values}")
-    print("-" * 30)
+    # 依 (Process, Tester, Customer) 分群組畫多個表
+    grouped = defaultdict(list)
+    for row in data_rows:
+        key = (row['Process'], row['Tester'], row['Customer'])
+        grouped[key].append(row)
 
-    # # 資料讀取（從 header_row_2+1 開始）
-    # data_rows = []
-    # for row in ws.iter_rows(min_row=header_row2+1, values_only=True):
-    #     # 檢查是不是空列
-    #     if all(cell is None or cell == "" for cell in row):
-    #         continue
-    #     # 資料欄數與標題不符自動補 None
-    #     row_data = list(row) + [None] * (len(unique_headers) - len(row))
-    #     row_dict = dict(zip(unique_headers, row_data))
-    #     data_rows.append(row_dict)
+    # 建立新工作表
+    ws_target = wb.create_sheet("Output")
 
-    # # 示範：取 Machine require(set/Wk) 下面六個月資料
-    # target_main = "Machine require(set/Wk)"
-    # target_months = ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]  # 根據你的需求調整
-    # target_fields = [f"{target_main}_{m}" for m in target_months]
-
-    # print("\n前3列 Machine require 六個月資料：")
-    # for row in data_rows[:3]:
-    #     print(f"Process: {row.get('Process', '')}, Tester: {row.get('Tester', '')}, Customer: {row.get('Customer', '')}")
-    #     values = [row.get(field, "") for field in target_fields]
-    #     print(values)
-
+    start_row = 1
+    for (process, tester, customer), rows in grouped.items():
+        # 只抓每組的第一筆 row 當代表（如果一組有多筆，這裡只抓第一筆；可自行改為加總/平均等統計方式）
+        row = rows[0]
+        data = {
+            'Machine O/H': [row.get(f'Machine O/H (set)_{m}') for m in target_months],
+            'Machine require(set/Wk)': [row.get(f'Machine require(set/Wk)_{m}') for m in target_months],
+            'idling tester': [row.get(f'Idling tester (set)_{m}') for m in target_months],
+        }
+        draw_table(ws_target, start_row)
+        write_table_block(ws_target, start_row, data, target_months, process, tester, customer)
+        start_row += 6  # 每個表格區塊往下推6列（含標題、資料3列、1列空行）
+    output_file = f"{source.rsplit('.', 1)[0]}_test.xlsm"
+    wb.save(output_file)
