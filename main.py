@@ -233,7 +233,8 @@ def write_table_block(ws, start_row, data, months, process, tester, customer):
             cell = ws.cell(row=r, column=5+j, value=value)
             cell.font = calibri_bold
             cell.alignment = Alignment(horizontal="center", vertical="center")
-            # idling tester 負值時塗紅底
+            if isinstance(value, (int, float)):
+                cell.number_format = '0.0'
             if i == 2 and value is not None:
                 try:
                     if float(value) < 0:
@@ -241,10 +242,10 @@ def write_table_block(ws, start_row, data, months, process, tester, customer):
                 except Exception:
                     pass
 
-def process_sheet(wb, ws_name, output_ws, start_row):
+def process_cp_sheet(wb, ws_name, output_ws, start_row, main_titles):
     ws = wb[ws_name]
     # 你的設定
-    main_titles = ['Machine O/H (set)', 'Machine require(set/Wk)', 'Idling tester (set)']
+    main_titles = main_titles
     months = gen_next_6months_titles()
     
     header_row1, header_row2 = find_multilevel_header(ws, main_titles + ["Process", "Tester", "Customer"], months)
@@ -284,7 +285,7 @@ def process_sheet(wb, ws_name, output_ws, start_row):
             else:
                 last_values[col] = row_dict[col]
         if row_dict.get('Process') in skip_process:
-            continue  # 跳過這一行
+            continue  
         
         is_negative = False
         for m in target_months:
@@ -307,7 +308,6 @@ def process_sheet(wb, ws_name, output_ws, start_row):
 
     start_row = start_row
     for (process, tester, customer), rows in grouped.items():
-        # 只抓每組的第一筆 row 當代表（如果一組有多筆，這裡只抓第一筆；可自行改為加總/平均等統計方式）
         row = rows[0]
         data = {
             'Machine O/H': [row.get(f'Machine O/H (set)_{m}') for m in target_months],
@@ -320,7 +320,6 @@ def process_sheet(wb, ws_name, output_ws, start_row):
     return start_row
 
 if __name__ == "__main__":
-    # 1. 載入檔案
     source = "250702162359805.xlsm"
     wb = load_workbook(source, keep_vba=True)
     if "Output" in wb.sheetnames:
@@ -328,9 +327,10 @@ if __name__ == "__main__":
     ws_target = wb.create_sheet("Output")
     
     ws_name = "CP Summary"
+    main_titles = ['Machine O/H (set)', 'Machine require(set/Wk)', 'Idling tester (set)']
 
     start_row = 1
-    start_row = process_sheet(wb, ws_name, ws_target, start_row)
+    start_row = process_cp_sheet(wb, ws_name, ws_target, start_row, main_titles)
 
     output_file = f"{source.rsplit('.', 1)[0]}_test.xlsm"
     wb.save(output_file)
