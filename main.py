@@ -4,15 +4,21 @@ from openpyxl.utils import get_column_letter
 from datetime import datetime
 import calendar
 import re
+import os
 from collections import defaultdict
 import logging
 
-# 初始化 logging 設定
+LOG_DIR = "log"
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+today_str = datetime.now().strftime('%Y%m%d')
+log_file = os.path.join(LOG_DIR, f"exec_{today_str}.log")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     handlers=[
-        logging.FileHandler("excel_proceed.log", encoding="utf-8"),
+        logging.FileHandler(log_file, encoding="utf-8"),
         logging.StreamHandler()
     ]
 )
@@ -268,7 +274,6 @@ def draw_table(ws, start_row):
         print(f"draw_table 發生不可預期錯誤，起始列 {start_row}，錯誤訊息：{e}")
 
 def write_table_block(ws, start_row, data, months, process, tester, customer):
-    print(process, tester, customer, data)
     for i, row_offset in enumerate([2, 3, 4]):
         r = start_row + row_offset
         # 左側 Process, Tester, Customer 只寫第一列
@@ -600,15 +605,62 @@ def process_ft_sheet(wb, ws_name, output_ws, start_row, main_titles):
         logger.exception(f"process_ft_sheet 執行失敗: {e}")
         raise
 
+def prepare_environment():
+    try:
+        # 建立資料夾
+        for folder in [RESOURCE_DIR, EXPORT_DIR, LOG_DIR]:
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+        # 清空 export
+        for f in os.listdir(EXPORT_DIR):
+            file_path = os.path.join(EXPORT_DIR, f)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+        # 設定 log
+        today_str = datetime.now().strftime('%Y%m%d')
+        log_file = os.path.join(LOG_DIR, f'exec_{today_str}.log')
+        logging.basicConfig(
+            filename=log_file,
+            filemode='a',
+            format='%(asctime)s [%(levelname)s] %(message)s',
+            level=logging.INFO,
+            encoding='utf-8'
+        )
+        logging.info("=== 程式開始 ===")
+        # 找 Excel 檔案
+        excel_files = [f for f in os.listdir(RESOURCE_DIR) if f.endswith('.xlsm')]
+        if not excel_files:
+            logging.error("resource 資料夾找不到 xlsm 檔案")
+            raise FileNotFoundError("resource 資料夾找不到 xlsm 檔案")
+        source_path = os.path.join(RESOURCE_DIR, excel_files[0])
+        export_path = os.path.join(EXPORT_DIR, f"{os.path.splitext(excel_files[0])[0]}_export.xlsm")
+        logging.info(f"讀取檔案: {source_path}")
+        logging.info(f"輸出檔案: {export_path}")
+        return source_path, export_path
+    except Exception as e:
+        print(f"環境準備失敗: {e}")
+        logging.error(f"環境準備失敗: {e}")
+        raise
+
+def get_or_create_clear_sheet(wb, sheet_name):
+    # 如果已存在，清空內容；不存在就建立一個
+    if sheet_name in wb.sheetnames:
+        del wb[sheet_name]
+    ws = wb.create_sheet(sheet_name)
+    return ws
+
+RESOURCE_DIR = 'resource'
+EXPORT_DIR = 'export'
+LOG_DIR = 'log'
+
 if __name__ == "__main__":
     try:
-        source = "250702162359805.xlsm"
-        wb = load_workbook(source, keep_vba=True)
+        source_path, export_path = prepare_environment()
+        wb = load_workbook(source_path, keep_vba=True)
 
-        if "Data Presentation" in wb.sheetnames:
-            del wb["Data Presentation"]
-        ws_target = wb.create_sheet("Data Presentation")
-        
+        # 建立或清空 Data Presentation
+        ws_target = get_or_create_clear_sheet(wb, "Data presentation")
+
         ws_name = "CP Summary"
         main_titles = ['Machine O/H (set)', 'Machine require(set/Wk)', 'Idling tester (set)']
 
@@ -622,11 +674,10 @@ if __name__ == "__main__":
         start_row = process_ft_sheet(wb, ws_name, ws_target, start_row, main_titles)
         logging.info(f"{ws_name} 完成，已畫出 FT Summary 表格共： {(start_row-1)//6} 個區塊(累計)")
 
-        output_file = f"{source.rsplit('.', 1)[0]}_export.xlsm"
-        wb.save(output_file)
-        logging.info(f"已儲存輸出檔案: {output_file}")
+        wb.save(export_path)
+        logging.info(f"已儲存輸出檔案: {export_path}")
 
         print("所有表格處理與輸出成功完成。")
     except Exception as e:
-        logging.exception(f"主流程發生重大錯誤: {e}")
-        print(f"主流程發生重大錯誤，請檢查 excel_process.log，或下方訊息：\n{e}")
+        logging.exception(f"主流程發生未預期錯誤: {e}")
+        print(f"主流程發生未預期錯誤: {e}")
