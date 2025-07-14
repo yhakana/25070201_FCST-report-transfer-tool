@@ -1,0 +1,100 @@
+2025-07-14 14:58:01,408 [INFO] root: 開始處理 CP Summary
+2025-07-14 14:58:01,414 [INFO] root: 找到多層標題列於 row 9 和 row 10 (主標題: ['Machine O/H (set)', 'Machine require(set/Wk)', 'Idling tester (set)'], 月份: ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+2025-07-14 14:58:01,416 [INFO] excel_proceed.process_cp_sheet: CP Summary: 自動判斷本月起六個月：['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+2025-07-14 14:58:01,486 [INFO] excel_proceed.process_cp_sheet: CP Summary 完成, 共寫入 13 個表格區塊
+2025-07-14 14:58:01,486 [INFO] root: CP Summary 完成，已畫出 CP Summary 表格共： 13 個區塊
+2025-07-14 14:58:01,486 [INFO] root: 開始處理 FT Summary
+2025-07-14 14:58:01,486 [INFO] excel_proceed.process_ft_sheet: 處理工作表: FT Summary
+2025-07-14 14:58:01,486 [INFO] excel_proceed.split_ft_tables: 開始尋找 FT Summary 兩個表格的區間（search_limit=100）
+2025-07-14 14:58:01,490 [INFO] excel_proceed.split_ft_tables: 區間判定完成，上表: 2-24, 下表: 27-49
+2025-07-14 14:58:01,491 [INFO] excel_proceed.process_ft_sheet: FT Summary 兩表範圍: (2, 24), (27, 49)
+2025-07-14 14:58:01,491 [INFO] excel_proceed.parse_table: 開始解析表格區間 rows 2-24
+2025-07-14 14:58:01,493 [INFO] excel_proceed.parse_table: 成功解析表格資料，共 20 筆
+2025-07-14 14:58:01,493 [INFO] excel_proceed.parse_table: 開始解析表格區間 rows 27-49
+2025-07-14 14:58:01,495 [INFO] excel_proceed.parse_table: 成功解析表格資料，共 21 筆
+2025-07-14 14:58:01,495 [INFO] excel_proceed.process_ft_sheet: 上表資料筆數: 20，下表資料筆數: 21
+2025-07-14 14:58:01,495 [INFO] excel_proceed.merge_tables_by_key: 開始合併 table1(20) + table2(21)
+2025-07-14 14:58:01,496 [INFO] excel_proceed.merge_tables_by_key: 合併完成，共 21 組 keys
+2025-07-14 14:58:01,496 [INFO] excel_proceed.process_ft_sheet: 合併後資料組數: 21
+2025-07-14 14:58:01,498 [INFO] excel_proceed.process_ft_sheet: 自動取得六個月: ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+2025-07-14 14:58:01,516 [INFO] excel_proceed.process_ft_sheet: 完成寫入 4 組表格
+2025-07-14 14:58:01,517 [INFO] root: FT Summary 完成，已畫出 FT Summary 表格共： 17 個區塊(累計)
+2025-07-14 14:58:01,705 [INFO] root: 已儲存輸出檔案: 250702162359805_export.xlsm
+2025-07-14 15:13:44,312 [INFO] root: 開始處理 CP Summary
+2025-07-14 15:13:44,316 [INFO] root: 找到多層標題列於 row 9 和 row 10 (主標題: ['Machine O/H (set)', 'Machine require(set/Wk)', 'Idling tester (set)'], 月份: ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+2025-07-14 15:13:44,318 [INFO] excel_proceed.process_cp_sheet: CP Summary: 自動判斷本月起六個月：['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+2025-07-14 15:13:44,402 [INFO] excel_proceed.process_cp_sheet: CP Summary 完成, 共寫入 13 個表格區塊
+2025-07-14 15:13:44,402 [INFO] root: CP Summary 完成，已畫出 CP Summary 表格共： 13 個區塊
+2025-07-14 15:13:44,403 [INFO] root: 開始處理 FT Summary
+2025-07-14 15:13:44,403 [INFO] excel_proceed.process_ft_sheet: 處理工作表: FT Summary
+2025-07-14 15:13:44,404 [INFO] excel_proceed.split_ft_tables: 開始尋找 FT Summary 兩個表格的區間（search_limit=100）
+2025-07-14 15:13:44,412 [INFO] excel_proceed.split_ft_tables: 區間判定完成，上表: 2-24, 下表: 27-49
+2025-07-14 15:13:44,412 [INFO] excel_proceed.process_ft_sheet: FT Summary 兩表範圍: (2, 24), (27, 49)
+2025-07-14 15:13:44,412 [INFO] excel_proceed.parse_table: 開始解析表格區間 rows 2-24
+2025-07-14 15:13:44,415 [INFO] excel_proceed.parse_table: 成功解析表格資料，共 20 筆
+2025-07-14 15:13:44,415 [INFO] excel_proceed.parse_table: 開始解析表格區間 rows 27-49
+2025-07-14 15:13:44,418 [INFO] excel_proceed.parse_table: 成功解析表格資料，共 21 筆
+2025-07-14 15:13:44,419 [INFO] excel_proceed.process_ft_sheet: 上表資料筆數: 20，下表資料筆數: 21
+2025-07-14 15:13:44,419 [INFO] excel_proceed.merge_tables_by_key: 開始合併 table1(20) + table2(21)
+2025-07-14 15:13:44,419 [INFO] excel_proceed.merge_tables_by_key: 合併完成，共 21 組 keys
+2025-07-14 15:13:44,420 [INFO] excel_proceed.process_ft_sheet: 合併後資料組數: 21
+2025-07-14 15:13:44,422 [INFO] excel_proceed.process_ft_sheet: 自動取得六個月: ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+2025-07-14 15:13:44,440 [INFO] excel_proceed.process_ft_sheet: 完成寫入 4 組表格
+2025-07-14 15:13:44,440 [INFO] root: FT Summary 完成，已畫出 FT Summary 表格共： 17 個區塊(累計)
+2025-07-14 15:13:44,440 [ERROR] root: 主流程發生重大錯誤: [Errno 13] Permission denied: '250702162359805_export.xlsm'
+Traceback (most recent call last):
+  File "C:\Users\shawn\work\excel_proceed\main.py", line 626, in <module>
+    wb.save(output_file)
+  File "C:\Users\shawn\work\excel_proceed\venv\Lib\site-packages\openpyxl\workbook\workbook.py", line 386, in save
+    save_workbook(self, filename)
+  File "C:\Users\shawn\work\excel_proceed\venv\Lib\site-packages\openpyxl\writer\excel.py", line 291, in save_workbook
+    archive = ZipFile(filename, 'w', ZIP_DEFLATED, allowZip64=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shawn\AppData\Local\Programs\Python\Python312\Lib\zipfile\__init__.py", line 1331, in __init__
+    self.fp = io.open(file, filemode)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '250702162359805_export.xlsm'
+2025-07-14 15:13:49,370 [INFO] root: 開始處理 CP Summary
+2025-07-14 15:13:49,375 [INFO] root: 找到多層標題列於 row 9 和 row 10 (主標題: ['Machine O/H (set)', 'Machine require(set/Wk)', 'Idling tester (set)'], 月份: ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+2025-07-14 15:13:49,377 [INFO] excel_proceed.process_cp_sheet: CP Summary: 自動判斷本月起六個月：['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+2025-07-14 15:13:49,464 [INFO] excel_proceed.process_cp_sheet: CP Summary 完成, 共寫入 13 個表格區塊
+2025-07-14 15:13:49,464 [INFO] root: CP Summary 完成，已畫出 CP Summary 表格共： 13 個區塊
+2025-07-14 15:13:49,464 [INFO] root: 開始處理 FT Summary
+2025-07-14 15:13:49,465 [INFO] excel_proceed.process_ft_sheet: 處理工作表: FT Summary
+2025-07-14 15:13:49,465 [INFO] excel_proceed.split_ft_tables: 開始尋找 FT Summary 兩個表格的區間（search_limit=100）
+2025-07-14 15:13:49,470 [INFO] excel_proceed.split_ft_tables: 區間判定完成，上表: 2-24, 下表: 27-49
+2025-07-14 15:13:49,471 [INFO] excel_proceed.process_ft_sheet: FT Summary 兩表範圍: (2, 24), (27, 49)
+2025-07-14 15:13:49,471 [INFO] excel_proceed.parse_table: 開始解析表格區間 rows 2-24
+2025-07-14 15:13:49,474 [INFO] excel_proceed.parse_table: 成功解析表格資料，共 20 筆
+2025-07-14 15:13:49,474 [INFO] excel_proceed.parse_table: 開始解析表格區間 rows 27-49
+2025-07-14 15:13:49,476 [INFO] excel_proceed.parse_table: 成功解析表格資料，共 21 筆
+2025-07-14 15:13:49,476 [INFO] excel_proceed.process_ft_sheet: 上表資料筆數: 20，下表資料筆數: 21
+2025-07-14 15:13:49,476 [INFO] excel_proceed.merge_tables_by_key: 開始合併 table1(20) + table2(21)
+2025-07-14 15:13:49,476 [INFO] excel_proceed.merge_tables_by_key: 合併完成，共 21 組 keys
+2025-07-14 15:13:49,477 [INFO] excel_proceed.process_ft_sheet: 合併後資料組數: 21
+2025-07-14 15:13:49,479 [INFO] excel_proceed.process_ft_sheet: 自動取得六個月: ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+2025-07-14 15:13:49,497 [INFO] excel_proceed.process_ft_sheet: 完成寫入 4 組表格
+2025-07-14 15:13:49,498 [INFO] root: FT Summary 完成，已畫出 FT Summary 表格共： 17 個區塊(累計)
+2025-07-14 15:13:49,702 [INFO] root: 已儲存輸出檔案: 250702162359805_export.xlsm
+2025-07-14 15:19:25,342 [INFO] root: 開始處理 CP Summary
+2025-07-14 15:19:25,347 [INFO] root: 找到多層標題列於 row 9 和 row 10 (主標題: ['Machine O/H (set)', 'Machine require(set/Wk)', 'Idling tester (set)'], 月份: ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+2025-07-14 15:19:25,349 [INFO] excel_proceed.process_cp_sheet: CP Summary: 自動判斷本月起六個月：['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+2025-07-14 15:19:25,453 [INFO] excel_proceed.process_cp_sheet: CP Summary 完成, 共寫入 13 個表格區塊
+2025-07-14 15:19:25,453 [INFO] root: CP Summary 完成，已畫出 CP Summary 表格共： 13 個區塊
+2025-07-14 15:19:25,454 [INFO] root: 開始處理 FT Summary
+2025-07-14 15:19:25,454 [INFO] excel_proceed.process_ft_sheet: 處理工作表: FT Summary
+2025-07-14 15:19:25,454 [INFO] excel_proceed.split_ft_tables: 開始尋找 FT Summary 兩個表格的區間（search_limit=100）
+2025-07-14 15:19:25,461 [INFO] excel_proceed.split_ft_tables: 區間判定完成，上表: 2-24, 下表: 27-49
+2025-07-14 15:19:25,461 [INFO] excel_proceed.process_ft_sheet: FT Summary 兩表範圍: (2, 24), (27, 49)
+2025-07-14 15:19:25,461 [INFO] excel_proceed.parse_table: 開始解析表格區間 rows 2-24
+2025-07-14 15:19:25,463 [INFO] excel_proceed.parse_table: 成功解析表格資料，共 20 筆
+2025-07-14 15:19:25,464 [INFO] excel_proceed.parse_table: 開始解析表格區間 rows 27-49
+2025-07-14 15:19:25,466 [INFO] excel_proceed.parse_table: 成功解析表格資料，共 21 筆
+2025-07-14 15:19:25,466 [INFO] excel_proceed.process_ft_sheet: 上表資料筆數: 20，下表資料筆數: 21
+2025-07-14 15:19:25,466 [INFO] excel_proceed.merge_tables_by_key: 開始合併 table1(20) + table2(21)
+2025-07-14 15:19:25,467 [INFO] excel_proceed.merge_tables_by_key: 合併完成，共 21 組 keys
+2025-07-14 15:19:25,467 [INFO] excel_proceed.process_ft_sheet: 合併後資料組數: 21
+2025-07-14 15:19:25,470 [INFO] excel_proceed.process_ft_sheet: 自動取得六個月: ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+2025-07-14 15:19:25,488 [INFO] excel_proceed.process_ft_sheet: 完成寫入 4 組表格
+2025-07-14 15:19:25,488 [INFO] root: FT Summary 完成，已畫出 FT Summary 表格共： 17 個區塊(累計)
+2025-07-14 15:19:25,706 [INFO] root: 已儲存輸出檔案: 250702162359805_export.xlsm
