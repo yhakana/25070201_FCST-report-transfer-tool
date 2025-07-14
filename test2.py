@@ -241,17 +241,10 @@ def write_table_block(ws, start_row, data, months, process, tester, customer):
                 except Exception:
                     pass
 
-def process_sheet(wb, ws_name, output_ws, start_row):
+def process_ft_sheet(wb, ws_name, output_ws, start_row, main_titles):
     ws = wb[ws_name]
 
-if __name__ == "__main__":
-    # 1. 載入檔案
-    source = "250702162359805.xlsm"
-    wb = load_workbook(source, keep_vba=True)
-    ws = wb["CP Summary"]
-
-    # 你的設定
-    main_titles = ['Machine O/H (set)', 'Machine require(set/Wk)', 'Idling tester (set)']
+    main_titles = main_titles
     months = gen_next_6months_titles()
     
     header_row1, header_row2 = find_multilevel_header(ws, main_titles + ["Process", "Tester", "Customer"], months)
@@ -312,10 +305,7 @@ if __name__ == "__main__":
         key = (row['Process'], row['Tester'], row['Customer'])
         grouped[key].append(row)
 
-    # 建立新工作表
-    ws_target = wb.create_sheet("Output")
-
-    start_row = 1
+    start_row = start_row
     for (process, tester, customer), rows in grouped.items():
         # 只抓每組的第一筆 row 當代表（如果一組有多筆，這裡只抓第一筆；可自行改為加總/平均等統計方式）
         row = rows[0]
@@ -324,8 +314,18 @@ if __name__ == "__main__":
             'Machine require(set/Wk)': [row.get(f'Machine require(set/Wk)_{m}') for m in target_months],
             'idling tester': [row.get(f'Idling tester (set)_{m}') for m in target_months],
         }
-        draw_table(ws_target, start_row)
-        write_table_block(ws_target, start_row, data, target_months, process, tester, customer)
+        draw_table(output_ws, start_row)
+        write_table_block(output_ws, start_row, data, target_months, process, tester, customer)
         start_row += 6  # 每個表格區塊往下推6列（含標題、資料3列、1列空行）
+    return start_row
+
+if __name__ == "__main__":
+    source = "250702162359805.xlsm"
+    wb = load_workbook(source, keep_vba=True)
+    ws = wb["CP Summary"]
+
+    # 你的設定
+    main_titles = ['Machine O/H (set)', 'Machine require(set/Wk)', 'Idling tester (set)']
+    
     output_file = f"{source.rsplit('.', 1)[0]}_test.xlsm"
     wb.save(output_file)

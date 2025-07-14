@@ -233,7 +233,8 @@ def write_table_block(ws, start_row, data, months, process, tester, customer):
             cell = ws.cell(row=r, column=5+j, value=value)
             cell.font = calibri_bold
             cell.alignment = Alignment(horizontal="center", vertical="center")
-            # idling tester 負值時塗紅底
+            if isinstance(value, (int, float)):
+                cell.number_format = '0.0'
             if i == 2 and value is not None:
                 try:
                     if float(value) < 0:
@@ -353,6 +354,122 @@ def split_ft_tables(ws, search_limit=100):
 
     return (first_table_start, first_table_end, second_table_start, second_table_end)
 
+def parse_table(ws, start_row, end_row):
+    # 取得主副標題
+    header_row1 = [str(cell.value).strip() if cell.value else "" for cell in ws[start_row]]
+    header_row2 = [str(cell.value).strip() if cell.value else "" for cell in ws[start_row + 1]]
+    headers = merge_multilevel_header(header_row1, header_row2)
+    headers = make_headers_unique(headers)
+
+    # 產生欄位名稱 -> 欄位索引的對應表
+    col_idx = {name: idx for idx, name in enumerate(headers)}
+
+    process_data = ""
+    for row in ws.iter_rows(min_row=start_row + 2, max_row=end_row, values_only=True):
+        print(row[:4])
+        if all(cell is None or cell == "" for cell in row):
+            continue
+        if row[0] == "" or row[0] is None:
+            continue
+        else:
+            process_data = row[0]
+            break
+    # 資料
+    data_rows = []
+    last_vals = [None, None, None, None]
+    last_vals[0] = process_data  # 初始 Process 資料
+    for row in ws.iter_rows(min_row=start_row + 2, max_row=end_row, values_only=True):
+        if all(cell is None or cell == "" for cell in row):
+            continue
+        row = list(row)
+        if row[0] == "CP sub total":
+            continue
+        # 補齊空欄
+        while len(row) < len(headers):
+            row.append(None)
+        # 前三欄固定：Process, Tester, Customer
+        for i in range(4):
+            if i == 2:
+                continue # 跳過空欄
+            if row[i]:
+                last_vals[i] = row[i]
+            else:
+                if i == 3:
+                    # Customer 欄位如果沒有值，則不補上最後值
+                    continue
+                row[i] = last_vals[i]
+        row_dict = {}
+        for idx, h in enumerate(headers):
+            # 下表格需映射欄位名稱
+            if h.startswith("Machine Balance"):
+                # 把 Machine Balance (set)_{月} 改成 Idling tester (set)_{月}
+                h = h.replace("Machine Balance", "Idling tester")
+            row_dict[h] = row[idx] if idx < len(row) else None
+        # 補充：主key
+        row_dict["Process"] = row[0]
+        row_dict["Tester"] = row[1]
+        row_dict["Customer"] = row[3]
+        data_rows.append(row_dict)
+    return data_rows, headers
+
+def merge_tables_by_key(table1, table2):
+    """
+    以 (Process, Tester, Customer) 為 key 合併上下表資料，欄位重疊以下表為主
+    """
+    merged = defaultdict(dict)
+    for row in table1:
+        key = (row["Process"], row["Tester"], row["Customer"])
+        merged[key].update(row)
+    for row in table2:
+        key = (row["Process"], row["Tester"], row["Customer"])
+        merged[key].update(row)  # 下表補上欄位，如已存在以下表為主
+    # 轉回 list of dict
+    return [v for v in merged.values()]
+
+def process_ft_sheet(wb, ws_name, output_ws, start_row, main_titles):
+    ws = wb[ws_name]
+    main_titles = main_titles
+    months = gen_next_6months_titles()
+
+    ft1_start, ft1_end, ft2_start, ft2_end = split_ft_tables(ws)
+
+    table1, headers1 = parse_table(ws, ft1_start, ft1_end)
+    table2, headers2 = parse_table(ws, ft2_start, ft2_end)
+
+    merged_data = merge_tables_by_key(table1, table2)
+
+    ws_target = output_ws
+
+    all_months = []
+    for row in merged_data:
+       for k in row.keys():
+            if re.match(r".+_(?:Jan|Feb|Mar|Apr|May|Jun'25|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:'\d\d|\-\d\d\d\d)?$", k):
+                # 解析出月份名
+                m = k.split("_")[-1]
+                if m not in all_months:
+                    all_months.append(m)
+    target_months = next_n_month_names(6, all_months)
+
+    # 以 (Process, Tester, Customer) 分群組
+    grouped = defaultdict(list)
+    for row in merged_data:
+        key = (row['Process'], row['Tester'], row['Customer'])
+        grouped[key].append(row)
+
+    start_row = 1
+    for (process, tester, customer), rows in grouped.items():
+        row = rows[0]  # 如一組有多筆取第一筆（可自行調整）
+        data = {
+            'Machine O/H': [row.get(f"Machine O/H (set)_{m}") for m in target_months],
+            'Machine require(set/Wk)': [row.get(f"Machine require(set/Wk)_{m}") for m in target_months],
+            'idling tester': [row.get(f"Idling tester (set)_{m}") for m in target_months],
+        }
+        # 判斷是否有任一 idling tester 為負才畫表格
+        if any(x is not None and isinstance(x, (int, float, str)) and str(x).replace('.', '', 1).replace('-', '', 1).isdigit() and float(x) < 0 for x in data['idling tester']):
+            draw_table(ws_target, start_row)
+            write_table_block(ws_target, start_row, data, target_months, process, tester, customer)
+            start_row += 6  # 每個表格區塊往下推6列
+    return start_row
 
 if __name__ == "__main__":
     source = "250702162359805.xlsm"
@@ -360,18 +477,12 @@ if __name__ == "__main__":
     if "Output" in wb.sheetnames:
         del wb["Output"]
     ws_target = wb.create_sheet("Output")
-    
-    # ws_name = "CP Summary"
-    # main_titles = ['Machine O/H (set)', 'Machine require(set/Wk)', 'Idling tester (set)']
 
-    # start_row = 1
-    # start_row = process_cp_sheet(wb, ws_name, ws_target, start_row, main_titles)
+    ws_name = "FT Summary"
+    main_titles = ['Machine O/H (set)', 'Machine require(set/Wk)', 'Idling tester (set)']
 
-    ws_ft = wb['FT Summary']
-    ft1_start, ft1_end, ft2_start, ft2_end = split_ft_tables(ws_ft)
-
-    print(f"第一表格：{ft1_start} ~ {ft1_end}")
-    print(f"第二表格：{ft2_start} ~ {ft2_end}")
+    start_row = 1
+    start_row = process_ft_sheet(wb, ws_name, ws_target, start_row, main_titles)
 
     output_file = f"{source.rsplit('.', 1)[0]}_test.xlsm"
     wb.save(output_file)
