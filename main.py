@@ -45,7 +45,6 @@ def gen_next_6months_titles():
             if i == 0 and now.month == 6 and now.year == 2025:
                 months.append("Jun'25")
             else:
-                # 根據資料表格實際格式決定月份命名
                 if y == 2025 and m == 6:
                     months.append("Jun'25")
                 elif y == 2025 and m == 7:
@@ -276,7 +275,6 @@ def draw_table(ws, start_row):
 def write_table_block(ws, start_row, data, months, process, tester, customer):
     for i, row_offset in enumerate([2, 3, 4]):
         r = start_row + row_offset
-        # 左側 Process, Tester, Customer 只寫第一列
         if row_offset == 2:
             for col, val, name in zip([1, 2, 3], [process, tester, customer], ["Process", "Tester", "Customer"]):
                 try:
@@ -286,7 +284,6 @@ def write_table_block(ws, start_row, data, months, process, tester, customer):
                 except Exception as e:
                     logging.warning(f"write_table_block 寫入 {name}({val}) 發生錯誤, row={r}, col={col}：{e}")
         
-        # 六個月橫向資料
         for j, m in enumerate(months):
             try:
                 if i == 0:
@@ -296,7 +293,6 @@ def write_table_block(ws, start_row, data, months, process, tester, customer):
             except Exception as e:
                 logging.warning(f"write_table_block 寫入 Month 標題({m}) 發生錯誤, row={r-1}, col={5+j}：{e}")
 
-            # 實際數據格填資料
             try:    
                 if i == 0:
                     value = data['Machine O/H'][j]
@@ -381,7 +377,6 @@ def process_cp_sheet(wb, ws_name, output_ws, start_row, main_titles):
             key = (row['Process'], row['Tester'], row['Customer'])
             grouped[key].append(row)
 
-        start_row = start_row
         for (process, tester, customer), rows in grouped.items():
             row = rows[0]
             data = {
@@ -570,7 +565,6 @@ def process_ft_sheet(wb, ws_name, output_ws, start_row, main_titles):
             key = (row['Process'], row['Tester'], row['Customer'])
             grouped[key].append(row)
 
-        start_row = start_row
         for (process, tester, customer), rows in grouped.items():
             row = rows[0] 
             data = {
@@ -607,7 +601,6 @@ def process_ft_sheet(wb, ws_name, output_ws, start_row, main_titles):
 
 def prepare_environment():
     try:
-        # 建立資料夾
         for folder in [RESOURCE_DIR, EXPORT_DIR, LOG_DIR]:
             if not os.path.exists(folder):
                 os.makedirs(folder)
@@ -627,20 +620,17 @@ def prepare_environment():
             encoding='utf-8'
         )
         logging.info("=== 程式開始 ===")
-        # 找 Excel 檔案
-        excel_files = [f for f in os.listdir(RESOURCE_DIR) if f.endswith('.xlsm')]
-        if not excel_files:
-            logging.error("resource 資料夾找不到 xlsm 檔案")
-            raise FileNotFoundError("resource 資料夾找不到 xlsm 檔案")
-        source_path = os.path.join(RESOURCE_DIR, excel_files[0])
-        export_path = os.path.join(EXPORT_DIR, f"{os.path.splitext(excel_files[0])[0]}_export.xlsm")
-        logging.info(f"讀取檔案: {source_path}")
-        logging.info(f"輸出檔案: {export_path}")
-        return source_path, export_path
     except Exception as e:
         print(f"環境準備失敗: {e}")
         logging.error(f"環境準備失敗: {e}")
         raise
+
+def get_excel_file_list():
+    files = [f for f in os.listdir(RESOURCE_DIR) if f.endswith('.xlsm')]
+    if not files:
+        logging.error("resource 資料夾找不到 xlsm 檔案")
+        raise FileNotFoundError("resource 資料夾找不到 xlsm 檔案")
+    return files
 
 def get_or_create_clear_sheet(wb, sheet_name):
     # 如果已存在，清空內容；不存在就建立一個
@@ -649,33 +639,50 @@ def get_or_create_clear_sheet(wb, sheet_name):
     ws = wb.create_sheet(sheet_name)
     return ws
 
+def process_file(source_path, export_path):
+    wb = load_workbook(source_path, keep_vba=True)
+
+    # 建立或清空 Data Presentation
+    ws_target = get_or_create_clear_sheet(wb, "Data presentation")
+    
+    start_row = 1
+    ws_name = "CP Summary"
+    main_titles = ['Machine O/H (set)', 'Machine require(set/Wk)', 'Idling tester (set)']
+
+    logging.info(f"開始處理 {ws_name}")
+    start_row = process_cp_sheet(wb, ws_name, ws_target, start_row, main_titles)
+    logging.info(f"{ws_name} 完成，已畫出 CP Summary 表格共： {(start_row-1)//6} 個區塊")
+
+    ws_name = "FT Summary"
+    logging.info(f"開始處理 {ws_name}")
+    start_row = process_ft_sheet(wb, ws_name, ws_target, start_row, main_titles)
+    logging.info(f"{ws_name} 完成，已畫出 FT Summary 表格共： {(start_row-1)//6} 個區塊(累計)")
+
+    wb.save(export_path)
+    logging.info(f"已儲存輸出檔案: {export_path}")
+
 RESOURCE_DIR = 'resource'
 EXPORT_DIR = 'export'
 LOG_DIR = 'log'
 
 if __name__ == "__main__":
     try:
-        source_path, export_path = prepare_environment()
-        wb = load_workbook(source_path, keep_vba=True)
+        prepare_environment()
+        excel_files = get_excel_file_list()
+        if not excel_files:
+            raise FileNotFoundError("在 resource 資料夾中找不到任何 xlsm 檔案。")
 
-        # 建立或清空 Data Presentation
-        ws_target = get_or_create_clear_sheet(wb, "Data presentation")
+        for file in excel_files:
+            logging.info(f"處理檔案: {file}")
+            source_path = os.path.join(RESOURCE_DIR, file)
+            export_path = os.path.join(EXPORT_DIR, f"{os.path.splitext(file)[0]}_export.xlsm")
 
-        ws_name = "CP Summary"
-        main_titles = ['Machine O/H (set)', 'Machine require(set/Wk)', 'Idling tester (set)']
-
-        start_row = 1
-        logging.info(f"開始處理 {ws_name}")
-        start_row = process_cp_sheet(wb, ws_name, ws_target, start_row, main_titles)
-        logging.info(f"{ws_name} 完成，已畫出 CP Summary 表格共： {(start_row-1)//6} 個區塊")
-
-        ws_name = "FT Summary"
-        logging.info(f"開始處理 {ws_name}")
-        start_row = process_ft_sheet(wb, ws_name, ws_target, start_row, main_titles)
-        logging.info(f"{ws_name} 完成，已畫出 FT Summary 表格共： {(start_row-1)//6} 個區塊(累計)")
-
-        wb.save(export_path)
-        logging.info(f"已儲存輸出檔案: {export_path}")
+            try:
+                process_file(source_path, export_path)
+                logging.info(f"檔案 {file} 處理成功，輸出到 {export_path}")
+            except Exception as e:
+                logging.error(f"處理檔案 {file} 時發生錯誤: {e}")
+                print(f"處理檔案 {file} 時發生錯誤: {e}")
 
         print("所有表格處理與輸出成功完成。")
     except Exception as e:
