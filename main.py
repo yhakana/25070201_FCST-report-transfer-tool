@@ -312,7 +312,7 @@ def write_table_block(ws, start_row, data, months, process, tester, customer):
                     try:
                         if float(value) < 0:
                             cell.fill = red_fill
-                    except Exception:
+                    except Exception as ve:
                         logging.warning(f"write_table_block 判斷負值時出錯, value={value}, row={r}, col={5+j}：{ve}")
             except Exception as e:
                 logging.warning(f"write_table_block 寫入資料 ({value}) 時出錯, row={r}, col={5+j}：{e}")
