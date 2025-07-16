@@ -8,9 +8,10 @@
 
 ### 使用步驟
 
-1. 將目標檔案 `.xlsm` 放入 `resource` 資料夾中 (一次可執行多個檔案)
-2. 執行 `main.exe`
-3. 會在 `export` 資料夾中得到輸出檔 `{原檔名}_export.xlsm`
+1. 建立 `resource` 資料夾 (如果沒有的話)
+2. 將目標檔案 `.xlsm` 放入 `resource` 資料夾中 (一次可執行多個檔案)
+3. 執行 `main.exe`
+4. 會在 `export` 資料夾中得到輸出檔 `{原檔名}_export.xlsm`
 
 - 其他: `log` 資料夾可以查看執行狀況與錯誤訊息
 
