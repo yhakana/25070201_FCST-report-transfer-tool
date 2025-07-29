@@ -32,6 +32,16 @@ thin = Side(border_style="thin", color="000000")
 red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
 border = Border(top=thin, left=thin, right=thin, bottom=thin)
 
+def normalize_month_key(key):
+    # 只留下三個英文字母的月份縮寫
+    pattern = re.compile(r"(.*?)[_\- ]*((?:\d{4}[-']?)?)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:'\d\d)?")
+    m = pattern.match(key)
+    if m:
+        main = m.group(1).strip('_- ')
+        month = m.group(3)  # 三個月縮寫
+        return f"{main}_{month}"
+    return key
+
 def gen_next_6months_titles():
     try:
         months = []
@@ -145,16 +155,19 @@ def make_headers_unique(headers):
         logging.error(f"make_headers_unique 發生錯誤: {e}（headers={headers}）")
         return []
 
+MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
 def extract_group_month_fields(headers):
     try:
         group_fields = {}
-        pattern = r"^(.+)_((?:Jan|Feb|Mar|Apr|May|Jun'25|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:'\d\d|\-\d\d\d\d)?)(?:_(\d+))?$"
+        pattern = re.compile(r"(.*?)[_\-\s]*(\d{4}[-']?)?(" + "|".join(MONTH_ABBR) + r")(?:'\d\d)?", re.IGNORECASE)
         for h in headers:
             try:
-                m = re.match(pattern, h)
+                m = pattern.search(h)
                 if m:
-                    group = m.group(1)
-                    month = m.group(2)
+                    group = m.group(1).strip('_- ')
+                    # month 這裡直接組合，保證 2025-Jul 也能抓出來
+                    month = ((m.group(2) or "") + m.group(3)).strip("-_' ")
                     if group not in group_fields:
                         group_fields[group] = []
                     group_fields[group].append((month, h))
@@ -166,34 +179,24 @@ def extract_group_month_fields(headers):
         logging.error(f"extract_group_month_fields 發生嚴重錯誤: {e}（headers={headers}）")
         return {}
 
-def next_n_month_names(n, header_months):
+def next_n_month_names(n):
+    """
+    永遠只回傳 'Jul', 'Aug', ... 這種縮寫，不考慮 header 的變種。
+    """
     try:
         now = datetime.now()
         y, m = now.year, now.month
         months = []
-        cnt = 0
-        all_header_months = set(header_months)
-        while cnt < n:
-            this_year = y
-            m_str_std = datetime(this_year, m, 1).strftime("%b")
-            m_str_jun25 = "Jun'25" if m == 6 and "Jun'25" in all_header_months else None
-            m_str_year = f"{this_year}-{m_str_std}" if f"{this_year}-{m_str_std}" in all_header_months else None
-            if m_str_jun25:
-                m_str = m_str_jun25
-            elif m_str_year:
-                m_str = m_str_year
-            else:
-                m_str = m_str_std
-            months.append(m_str)
+        for _ in range(n):
+            months.append(datetime(y, m, 1).strftime("%b"))
             m += 1
             if m > 12:
                 m = 1
                 y += 1
-            cnt += 1
-        logging.debug(f"next_n_month_names 計算結果: {months}（header_months={header_months}）")
+        logging.debug(f"next_n_month_names 統一縮寫: {months}")
         return months
     except Exception as e:
-        logging.error(f"next_n_month_names 發生錯誤: {e}（n={n}, header_months={header_months}）")
+        logging.error(f"next_n_month_names 發生錯誤: {e}")
         return []
 
 def draw_table(ws, start_row):
@@ -246,7 +249,7 @@ def draw_table(ws, start_row):
                 cell.border = border
         except Exception as e_title:
             logging.warning(f"draw_table 設定標題失敗，起始列 {start_row}，錯誤訊息：{e_title}")
-        
+
         # 直排內容與格式
         try:
             ws.cell(row=start_row+2, column=4, value="MachineO/H")
@@ -283,7 +286,7 @@ def write_table_block(ws, start_row, data, months, process, tester, customer):
                     cell.alignment = Alignment(horizontal="center", vertical="center")
                 except Exception as e:
                     logging.warning(f"write_table_block 寫入 {name}({val}) 發生錯誤, row={r}, col={col}：{e}")
-        
+
         for j, m in enumerate(months):
             try:
                 if i == 0:
@@ -293,7 +296,7 @@ def write_table_block(ws, start_row, data, months, process, tester, customer):
             except Exception as e:
                 logging.warning(f"write_table_block 寫入 Month 標題({m}) 發生錯誤, row={r-1}, col={5+j}：{e}")
 
-            try:    
+            try:
                 if i == 0:
                     value = data['Machine O/H'][j]
                 elif i == 1:
@@ -302,7 +305,7 @@ def write_table_block(ws, start_row, data, months, process, tester, customer):
                     value = data['idling tester'][j]
                 else:
                     value = None
-                
+
                 cell = ws.cell(row=r, column=5+j, value=value)
                 cell.font = calibri_bold
                 cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -317,13 +320,21 @@ def write_table_block(ws, start_row, data, months, process, tester, customer):
             except Exception as e:
                 logging.warning(f"write_table_block 寫入資料 ({value}) 時出錯, row={r}, col={5+j}：{e}")
 
+def limited_normalize_row(row_dict):
+    normalized_row = {}
+    for k, v in row_dict.items():
+        nk = normalize_month_key(k)
+        if nk not in normalized_row:
+            normalized_row[nk] = v
+    return normalized_row
+
 def process_cp_sheet(wb, ws_name, output_ws, start_row, main_titles):
     logger = logging.getLogger("excel_proceed.process_cp_sheet")
     try:
         ws = wb[ws_name]
         main_titles = main_titles
         months = gen_next_6months_titles()
-        
+
         header_row1, header_row2 = find_multilevel_header(ws, main_titles + ["Process", "Tester", "Customer"], months)
         header1 = [str(cell.value).strip() if cell.value else "" for cell in ws[header_row1]]
         header2 = [str(cell.value).strip() if cell.value else "" for cell in ws[header_row2]]
@@ -331,10 +342,18 @@ def process_cp_sheet(wb, ws_name, output_ws, start_row, main_titles):
         final_headers = merge_multilevel_header(header1, header2)
         unique_headers = make_headers_unique(final_headers)
 
-        group_month_fields = extract_group_month_fields(unique_headers)
-        all_months = sorted({month for fields in group_month_fields.values() for (month, _) in fields})
+        final_headers = merge_multilevel_header(header1, header2)
+        unique_headers = make_headers_unique(final_headers)
 
-        target_months = next_n_month_names(6, all_months)
+        # normalize 所有 header，抓月欄位
+        normalized_header_map = {normalize_month_key(h): h for h in unique_headers}
+        normalized_months = []
+        for nh in normalized_header_map:
+            if "require(set/Wk)" in nh and any(mon in nh for mon in MONTH_ABBR):
+                month = nh.split("_")[-1]
+                if month not in normalized_months:
+                    normalized_months.append(month)
+        target_months = normalized_months[:6]
         logger.info(f"{ws_name}: 自動判斷本月起六個月：{target_months}")
 
         fill_columns = ["Process", "Tester", "Customer"]
@@ -350,6 +369,7 @@ def process_cp_sheet(wb, ws_name, output_ws, start_row, main_titles):
                 row_data += [None] * (len(unique_headers) - len(row_data))
             elif len(row_data) > len(unique_headers):
                 row_data = row_data[:len(unique_headers)]
+
             row_dict = dict(zip(unique_headers, row_data))
             for col in fill_columns:
                 if not row_dict.get(col):
@@ -357,11 +377,13 @@ def process_cp_sheet(wb, ws_name, output_ws, start_row, main_titles):
                 else:
                     last_values[col] = row_dict[col]
             if row_dict.get('Process') in skip_process:
-                continue  
-            
+                continue
+
+            normalized_row = limited_normalize_row(row_dict)
+
             is_negative = False
             for m in target_months:
-                val = row_dict.get(f"Idling tester (set)_{m}")
+                val = normalized_row.get(f"Idling tester (set)_{m}")
                 try:
                     if val is not None and float(val) < 0:
                         is_negative = True
@@ -379,10 +401,11 @@ def process_cp_sheet(wb, ws_name, output_ws, start_row, main_titles):
 
         for (process, tester, customer), rows in grouped.items():
             row = rows[0]
+            normalized_row = limited_normalize_row(row)
             data = {
-                'Machine O/H': [row.get(f'Machine O/H (set)_{m}') for m in target_months],
-                'Machine require(set/Wk)': [row.get(f'Machine require(set/Wk)_{m}') for m in target_months],
-                'idling tester': [row.get(f'Idling tester (set)_{m}') for m in target_months],
+                'Machine O/H': [normalized_row.get(f'Machine O/H (set)_{m}') for m in target_months],
+                'Machine require(set/Wk)': [normalized_row.get(f'Machine require(set/Wk)_{m}') for m in target_months],
+                'idling tester': [normalized_row.get(f'Idling tester (set)_{m}') for m in target_months],
             }
             try:
                 draw_table(output_ws, start_row)
@@ -437,7 +460,7 @@ def split_ft_tables(ws, search_limit=100):
             raise ValueError("未找到兩個表格的分隔點，請確認 FT Summary 格式是否正確！")
 
         return (first_table_start, first_table_end, second_table_start, second_table_end)
-    
+
     except Exception as e:
         logger.exception(f"split_ft_tables 發生錯誤：{e}")
         raise
@@ -463,10 +486,10 @@ def parse_table(ws, start_row, end_row):
                 process_data = row[0]
                 logger.debug(f"第一筆 Process: {process_data}")
                 break
-        
+
         data_rows = []
         last_vals = [None, None, None, None]
-        last_vals[0] = process_data  
+        last_vals[0] = process_data
         for row in ws.iter_rows(min_row=start_row + 2, max_row=end_row, values_only=True):
             if all(cell is None or cell == "" for cell in row):
                 continue
@@ -476,7 +499,7 @@ def parse_table(ws, start_row, end_row):
             # 補齊空欄
             while len(row) < len(headers):
                 row.append(None)
-            
+
             for i in range(4):  # Customer 欄位在第 4 列，第三列為空
                 if i == 2:
                     continue
@@ -487,7 +510,7 @@ def parse_table(ws, start_row, end_row):
                         # Customer 欄位如果沒有值，則不補上最後值
                         continue
                     row[i] = last_vals[i]
-            
+
             row_dict = {}
             for idx, h in enumerate(headers):
                 if h.startswith("Machine Balance"):
@@ -500,7 +523,7 @@ def parse_table(ws, start_row, end_row):
             data_rows.append(row_dict)
         logger.info(f"成功解析表格資料，共 {len(data_rows)} 筆")
         return data_rows, headers
-    
+
     except Exception as e:
         logger.exception(f"parse_table 錯誤（rows {start_row}-{end_row}）：{e}")
         raise
@@ -525,7 +548,7 @@ def merge_tables_by_key(table1, table2):
         return merged_list
     except Exception as e:
         logger.exception(f"merge_tables_by_key 錯誤：{e}")
-        raise       
+        raise
 
 def process_ft_sheet(wb, ws_name, output_ws, start_row, main_titles):
     logger = logging.getLogger("excel_proceed.process_ft_sheet")
@@ -557,7 +580,7 @@ def process_ft_sheet(wb, ws_name, output_ws, start_row, main_titles):
                     m = k.split("_")[-1]
                     if m not in all_months:
                         all_months.append(m)
-        target_months = next_n_month_names(6, all_months)
+        target_months = next_n_month_names(6)
         logger.info(f"自動取得六個月: {target_months}")
 
         grouped = defaultdict(list)
@@ -566,11 +589,12 @@ def process_ft_sheet(wb, ws_name, output_ws, start_row, main_titles):
             grouped[key].append(row)
 
         for (process, tester, customer), rows in grouped.items():
-            row = rows[0] 
+            row = rows[0]
+            normalized_row = {normalize_month_key(k): v for k, v in row.items()}
             data = {
-                'Machine O/H': [row.get(f"Machine O/H (set)_{m}") for m in target_months],
-                'Machine require(set/Wk)': [row.get(f"Machine require(set/Wk)_{m}") for m in target_months],
-                'idling tester': [row.get(f"Idling tester (set)_{m}") for m in target_months],
+                'Machine O/H': [normalized_row.get(f"Machine O/H (set)_{m}") for m in target_months],
+                'Machine require(set/Wk)': [normalized_row.get(f"Machine require(set/Wk)_{m}") for m in target_months],
+                'idling tester': [normalized_row.get(f"Idling tester (set)_{m}") for m in target_months],
             }
             # 判斷是否有任一 idling tester 為負才畫表格
             try:
@@ -584,7 +608,7 @@ def process_ft_sheet(wb, ws_name, output_ws, start_row, main_titles):
             except Exception as ex:
                 logger.warning(f"比對 idling tester 負值時出錯: ({process}, {tester}, {customer})，錯誤：{ex}")
                 negative = False
-            
+
             if negative:
                 try:
                     draw_table(ws_target, start_row)
@@ -644,7 +668,7 @@ def process_file(source_path, export_path):
 
     # 建立或清空 Data Presentation
     ws_target = get_or_create_clear_sheet(wb, "Data presentation")
-    
+
     start_row = 1
     ws_name = "CP Summary"
     main_titles = ['Machine O/H (set)', 'Machine require(set/Wk)', 'Idling tester (set)']
